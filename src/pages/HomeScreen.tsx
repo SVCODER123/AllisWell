@@ -93,7 +93,6 @@ export default function HomeScreen() {
         <button
           onClick={() => {
             if (window.confirm("Mark emergency as resolved?")) {
-              const { resolveEmergency } = useApp();
               resolveEmergency();
             }
           }}
