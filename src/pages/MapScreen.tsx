@@ -59,6 +59,22 @@ export default function MapScreen() {
       ]
     : [];
 
+  if (!emergency) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 fade-in">
+        <div className="rounded-xl border border-border bg-background p-6 text-center shadow-lg">
+          <p className="text-lg font-bold mb-2">Live map is available during active SOS only.</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Please trigger SOS from Home to see helpers and emergency tracking on the map.
+          </p>
+          <p className="text-xs text-muted-foreground/60">
+            You can still use the app normally while waiting for an emergency event.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen pb-20 fade-in">
       <div className="relative flex-1 min-h-[60vh]">
@@ -74,9 +90,9 @@ export default function MapScreen() {
           />
           <RecenterMap lat={center[0]} lng={center[1]} />
 
-          {/* User/Emergency marker */}
-          <Marker position={center} icon={emergency ? emergencyIcon : undefined}>
-            <Popup>{emergency ? "🚨 Emergency Location" : "📍 Your Location"}</Popup>
+          {/* Emergency marker */}
+          <Marker position={center} icon={emergencyIcon}>
+            <Popup>🚨 Emergency Location</Popup>
           </Marker>
 
           {/* Helper markers */}
@@ -86,15 +102,6 @@ export default function MapScreen() {
             </Marker>
           ))}
         </MapContainer>
-
-        {!emergency && (
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 pointer-events-none z-[1000]">
-            <div className="bg-background/90 backdrop-blur rounded-xl px-4 py-3 shadow-lg">
-              <p className="text-muted-foreground font-medium text-sm">No active emergency</p>
-              <p className="text-muted-foreground/60 text-xs mt-0.5">Map will highlight during SOS</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Bottom panel */}

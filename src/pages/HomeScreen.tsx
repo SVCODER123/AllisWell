@@ -116,11 +116,10 @@ export default function HomeScreen() {
       {/* SOS Button */}
       <div className="relative mb-12">
         <div className="absolute inset-0 rounded-full bg-primary/20 sos-ring" />
-        <div className="absolute inset-[-16px] rounded-full bg-primary/10 sos-ring" style={{ animationDelay: "0.5s" }} />
+        <div className="absolute inset-[-16px] rounded-full bg-primary/10 sos-ring sos-ring-delayed" />
         <button
           onClick={triggerSOS}
-          className="relative w-44 h-44 rounded-full bg-primary flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-transform z-10"
-          style={{ boxShadow: "0 0 60px hsl(var(--primary) / 0.4)" }}
+          className="relative w-44 h-44 rounded-full bg-primary flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-transform z-10 sos-button"
         >
           <span className="text-primary-foreground text-4xl font-black">SOS</span>
           <span className="text-primary-foreground/70 text-[10px] font-semibold mt-1">TAP FOR HELP</span>

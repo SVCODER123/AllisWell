@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,14 +13,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AppProvider>
-        <BrowserRouter>
-          <Routes>
+const App = () => {
+  const Router = import.meta.env.VITE_USE_HASH === "true" ? HashRouter : BrowserRouter;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppProvider>
+          <Router>
+            <Routes>
             <Route path="/" element={<HomeScreen />} />
             <Route path="/map" element={<MapScreen />} />
             <Route path="/feed" element={<FeedScreen />} />
@@ -28,10 +30,11 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
-        </BrowserRouter>
+        </Router>
       </AppProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
