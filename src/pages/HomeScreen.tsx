@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Shield, Activity, AlertTriangle } from "lucide-react";
 
 export default function HomeScreen() {
-  const { triggerSOS, emergency, isCountdown, countdownSeconds, cancelSOS, profile } = useApp();
+  const { triggerSOS, emergency, isCountdown, countdownSeconds, cancelSOS, resolveEmergency, profile } = useApp();
   const navigate = useNavigate();
 
   if (isCountdown) {
