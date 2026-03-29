@@ -109,7 +109,7 @@ export default function HomeScreen() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <Shield className="w-6 h-6 text-primary" />
-        <h1 className="text-xl font-black text-foreground tracking-tight">LifeLine</h1>
+        <h1 className="text-xl font-black text-foreground tracking-tight">AllisWell</h1>
       </div>
       <p className="text-muted-foreground text-xs mb-12">Emergency Response System</p>
 
