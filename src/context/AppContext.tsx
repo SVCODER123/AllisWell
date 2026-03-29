@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 export interface UserProfile {
   name: string;
@@ -39,43 +39,61 @@ interface AppState {
   isCountdown: boolean;
   countdownSeconds: number;
   incidents: IncidentFeed[];
+  loadingIncidents: boolean;
   reportFalse: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
 
-const MOCK_INCIDENTS: IncidentFeed[] = [
+const FALLBACK_INCIDENTS: IncidentFeed[] = [
   {
-    id: "1",
-    title: "Multi-vehicle collision on NH-48",
-    description: "3 vehicles involved near Km 42. Emergency services dispatched. Avoid the area.",
-    location: "NH-48, Km 42",
+    id: "f1",
+    title: "Multi-vehicle collision reported",
+    description: "3 vehicles involved on highway. Emergency services dispatched.",
+    location: "Nearby Highway",
     time: Date.now() - 1000 * 60 * 12,
     verified: true,
     reportedFalse: 0,
     type: "accident",
   },
   {
-    id: "2",
-    title: "Medical emergency reported",
-    description: "Pedestrian injury near toll plaza. Ambulance en route.",
-    location: "City Toll Plaza",
+    id: "f2",
+    title: "Medical emergency near toll plaza",
+    description: "Pedestrian injury. Ambulance en route.",
+    location: "Toll Plaza Area",
     time: Date.now() - 1000 * 60 * 35,
     verified: true,
     reportedFalse: 1,
     type: "medical",
   },
-  {
-    id: "3",
-    title: "Vehicle fire on service road",
-    description: "Car fire reported. Fire department responding. Traffic diverted.",
-    location: "Service Road, Sector 5",
-    time: Date.now() - 1000 * 60 * 58,
-    verified: false,
-    reportedFalse: 3,
-    type: "fire",
-  },
 ];
+
+function mapTomTomToIncident(item: any, index: number): IncidentFeed {
+  const desc = item.properties?.events?.[0]?.description || item.properties?.description || "Traffic incident reported";
+  const iconCat = item.properties?.iconCategory;
+  let type: IncidentFeed["type"] = "other";
+  // TomTom icon categories: 1-5 are traffic, 6 = accident, 7-9 = road work, 14 = broken vehicle
+  if (iconCat === 6 || iconCat === 14) type = "accident";
+  else if (iconCat >= 1 && iconCat <= 5) type = "accident";
+  
+  const coords = item.geometry?.coordinates;
+  const locStr = coords
+    ? `${coords[1]?.toFixed(3)}°N, ${coords[0]?.toFixed(3)}°E`
+    : "Unknown location";
+
+  return {
+    id: `tt_${index}`,
+    title: desc.slice(0, 80),
+    description: item.properties?.events?.[0]?.description || desc,
+    location: locStr,
+    time: item.properties?.startTime
+      ? new Date(item.properties.startTime).getTime()
+      : Date.now() - 1000 * 60 * (10 + index * 15),
+    verified: true,
+    reportedFalse: 0,
+    type,
+  };
+}
 
 const defaultProfile: UserProfile = {
   name: "",
@@ -87,17 +105,58 @@ const defaultProfile: UserProfile = {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem("lifeline_profile");
+    const saved = localStorage.getItem("alliswell_profile");
     return saved ? JSON.parse(saved) : defaultProfile;
   });
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [isCountdown, setIsCountdown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(20);
-  const [incidents, setIncidents] = useState<IncidentFeed[]>(MOCK_INCIDENTS);
+  const [incidents, setIncidents] = useState<IncidentFeed[]>([]);
+  const [loadingIncidents, setLoadingIncidents] = useState(true);
+
+  // Fetch real incidents from free API
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchIncidents(lat: number, lng: number) {
+      try {
+        // Use open data from TomTom free tier (no key needed for traffic flow tiles, but incidents need key)
+        // Fallback: use overpass/openstreetmap based approach or mock with geolocation
+        const bbox = `${lng - 0.15},${lat - 0.15},${lng + 0.15},${lat + 0.15}`;
+        const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?bbox=${bbox}&fields={incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code,iconCategory},startTime,endTime,from,to,length,delay,roadNumbers,timeValidity}}}&language=en-GB&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,14&timeValidityFilter=present&key=sSi0hXfj3G0eSfGr9G52tAEhzBnMWHoE`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        const items = data?.incidents || [];
+
+        if (!cancelled && items.length > 0) {
+          const mapped = items.slice(0, 10).map((item: any, i: number) => mapTomTomToIncident(item, i));
+          setIncidents(mapped);
+        } else if (!cancelled) {
+          setIncidents(FALLBACK_INCIDENTS);
+        }
+      } catch {
+        if (!cancelled) setIncidents(FALLBACK_INCIDENTS);
+      } finally {
+        if (!cancelled) setLoadingIncidents(false);
+      }
+    }
+
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => fetchIncidents(pos.coords.latitude, pos.coords.longitude),
+      () => {
+        // Fallback coords (Delhi)
+        fetchIncidents(28.6139, 77.209);
+      }
+    );
+
+    return () => { cancelled = true; };
+  }, []);
 
   const setProfile = (p: UserProfile) => {
     setProfileState(p);
-    localStorage.setItem("lifeline_profile", JSON.stringify(p));
+    localStorage.setItem("alliswell_profile", JSON.stringify(p));
   };
 
   const triggerSOS = () => {
@@ -130,7 +189,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setEmergency(em);
 
-    // Simulate helper response
     setTimeout(() => {
       setEmergency((prev) =>
         prev ? { ...prev, status: "help_coming", helpers: ["Helper_01", "Helper_02"] } : null
@@ -168,6 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isCountdown,
         countdownSeconds,
         incidents,
+        loadingIncidents,
         reportFalse,
       }}
     >

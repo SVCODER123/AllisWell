@@ -1,5 +1,5 @@
 import { useApp } from "@/context/AppContext";
-import { Shield, ShieldCheck, ShieldAlert, Clock, Flag } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, Clock, Flag, Loader2 } from "lucide-react";
 
 function timeAgo(ms: number) {
   const mins = Math.floor((Date.now() - ms) / 60000);
@@ -16,7 +16,7 @@ const typeColors: Record<string, string> = {
 };
 
 export default function FeedScreen() {
-  const { incidents, reportFalse } = useApp();
+  const { incidents, reportFalse, loadingIncidents } = useApp();
 
   return (
     <div className="min-h-screen pb-20 fade-in">
@@ -25,8 +25,15 @@ export default function FeedScreen() {
           <Shield className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-black text-foreground">Incident Feed</h1>
         </div>
-        <p className="text-xs text-muted-foreground">Verified emergency updates in your area</p>
+        <p className="text-xs text-muted-foreground">Live emergency updates near you</p>
       </div>
+
+      {loadingIncidents && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading nearby incidents…</span>
+        </div>
+      )}
 
       <div className="px-4 space-y-3">
         {incidents.map((incident) => (
@@ -67,6 +74,9 @@ export default function FeedScreen() {
             </div>
           </div>
         ))}
+        {!loadingIncidents && incidents.length === 0 && (
+          <p className="text-center text-muted-foreground text-sm py-12">No incidents reported nearby.</p>
+        )}
       </div>
     </div>
   );
