@@ -1,4 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { databaseService } from "@/lib/database";
+
+declare global {
+  interface Window {
+    __sosInterval?: number;
+  }
+}
 
 export interface UserProfile {
   name: string;
@@ -6,6 +13,11 @@ export interface UserProfile {
   emergencyContact: string;
   allergies: string;
   phone: string;
+  isVolunteer: boolean;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface Emergency {
@@ -41,6 +53,9 @@ interface AppState {
   incidents: IncidentFeed[];
   loadingIncidents: boolean;
   reportFalse: (id: string) => void;
+  joinAsVolunteer: () => void;
+  leaveVolunteer: () => void;
+  getNearbyVolunteers: () => Promise<UserProfile[]>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -68,7 +83,21 @@ const FALLBACK_INCIDENTS: IncidentFeed[] = [
   },
 ];
 
-function mapTomTomToIncident(item: any, index: number): IncidentFeed {
+interface TomTomIncident {
+  geometry?: {
+    coordinates?: [number, number];
+  };
+  properties?: {
+    events?: Array<{
+      description?: string;
+    }>;
+    description?: string;
+    iconCategory?: number;
+    startTime?: string;
+  };
+}
+
+function mapTomTomToIncident(item: TomTomIncident, index: number): IncidentFeed {
   const desc = item.properties?.events?.[0]?.description || item.properties?.description || "Traffic incident reported";
   const iconCat = item.properties?.iconCategory;
   let type: IncidentFeed["type"] = "other";
@@ -101,6 +130,7 @@ const defaultProfile: UserProfile = {
   emergencyContact: "",
   allergies: "",
   phone: "",
+  isVolunteer: false,
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -125,13 +155,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bbox = `${lng - 0.15},${lat - 0.15},${lng + 0.15},${lat + 0.15}`;
         const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?bbox=${bbox}&fields={incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code,iconCategory},startTime,endTime,from,to,length,delay,roadNumbers,timeValidity}}}&language=en-GB&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,14&timeValidityFilter=present&key=sSi0hXfj3G0eSfGr9G52tAEhzBnMWHoE`;
 
+interface TomTomAPIResponse {
+  incidents?: TomTomIncident[];
+}
+
         const res = await fetch(url);
         if (!res.ok) throw new Error("API error");
-        const data = await res.json();
+        const data: TomTomAPIResponse = await res.json();
         const items = data?.incidents || [];
 
         if (!cancelled && items.length > 0) {
-          const mapped = items.slice(0, 10).map((item: any, i: number) => mapTomTomToIncident(item, i));
+          const mapped = items.slice(0, 10).map((item, i) => mapTomTomToIncident(item, i));
           setIncidents(mapped);
         } else if (!cancelled) {
           setIncidents(FALLBACK_INCIDENTS);
@@ -154,9 +188,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const setProfile = (p: UserProfile) => {
+  const setProfile = async (p: UserProfile) => {
     setProfileState(p);
     localStorage.setItem("alliswell_profile", JSON.stringify(p));
+    // Save to database
+    await databaseService.saveUserProfile("user_1", p);
   };
 
   const triggerSOS = () => {
@@ -174,7 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }, 1000);
 
-    (window as any).__sosInterval = interval;
+    window.__sosInterval = interval;
   };
 
   const activateEmergency = () => {
@@ -189,9 +225,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setEmergency(em);
 
+    // Simulate more helpers responding during emergency
+    const baseHelpers = ["Helper_01", "Helper_02"];
+    const additionalHelpers = profile.isVolunteer ? ["Helper_03", "Helper_04", "Helper_05"] : ["Helper_03"];
+
     setTimeout(() => {
       setEmergency((prev) =>
-        prev ? { ...prev, status: "help_coming", helpers: ["Helper_01", "Helper_02"] } : null
+        prev ? { ...prev, status: "help_coming", helpers: [...baseHelpers, ...additionalHelpers] } : null
       );
     }, 5000);
   };
@@ -199,8 +239,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cancelSOS = () => {
     setIsCountdown(false);
     setCountdownSeconds(20);
-    if ((window as any).__sosInterval) {
-      clearInterval((window as any).__sosInterval);
+    if (window.__sosInterval) {
+      clearInterval(window.__sosInterval);
     }
   };
 
@@ -208,10 +248,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmergency(null);
   };
 
-  const reportFalse = (id: string) => {
-    setIncidents((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, reportedFalse: i.reportedFalse + 1 } : i))
-    );
+  const joinAsVolunteer = () => {
+    if (profile.name && profile.phone) {
+      navigator.geolocation?.getCurrentPosition(
+        (pos) => {
+          const updatedProfile = {
+            ...profile,
+            isVolunteer: true,
+            location: {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            },
+          };
+          setProfileState(updatedProfile);
+        },
+        () => {
+          // Fallback without location
+          const updatedProfile = { ...profile, isVolunteer: true };
+          setProfileState(updatedProfile);
+        }
+      );
+    }
+  };
+
+  const leaveVolunteer = () => {
+    const updatedProfile = { ...profile, isVolunteer: false };
+    setProfileState(updatedProfile);
+  };
+
+  const getNearbyVolunteers = async (): Promise<UserProfile[]> => {
+    try {
+      const volunteers = await databaseService.getNearbyVolunteers(28.6139, 77.209, 10);
+      return volunteers.map(v => v.profile);
+    } catch {
+      // Fallback to mock data
+      return [
+        {
+          name: "John Doe",
+          bloodGroup: "O+",
+          emergencyContact: "+1234567890",
+          allergies: "None",
+          phone: "+1234567890",
+          isVolunteer: true,
+          location: { latitude: 28.6139, longitude: 77.209 },
+        },
+        {
+          name: "Jane Smith",
+          bloodGroup: "A+",
+          emergencyContact: "+1234567891",
+          allergies: "Peanuts",
+          phone: "+1234567891",
+          isVolunteer: true,
+          location: { latitude: 28.6140, longitude: 77.210 },
+        },
+      ];
+    }
   };
 
   return (
@@ -228,6 +319,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         incidents,
         loadingIncidents,
         reportFalse,
+        joinAsVolunteer,
+        leaveVolunteer,
+        getNearbyVolunteers,
       }}
     >
       {children}

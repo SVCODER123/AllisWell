@@ -9,32 +9,54 @@ import HomeScreen from "./pages/HomeScreen";
 import MapScreen from "./pages/MapScreen";
 import FeedScreen from "./pages/FeedScreen";
 import ProfileScreen from "./pages/ProfileScreen";
+import YourProfileScreen from "./pages/YourProfileScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function RoutesWrapper() {
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/map" element={<MapScreen />} />
+        <Route path="/feed" element={<FeedScreen />} />
+        <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/your-profile" element={<YourProfileScreen />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <BottomNav />
+    </>
+  );
+}
+
 const App = () => {
-  const Router = import.meta.env.VITE_USE_HASH === "true" ? HashRouter : BrowserRouter;
+  const isProduction = import.meta.env.PROD;
+  const useHash = import.meta.env.VITE_USE_HASH === "true" || isProduction; // Force HashRouter for production
+
+  // Set dark theme
+  document.documentElement.classList.add("dark");
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <AppProvider>
-          <Router>
-            <Routes>
-            <Route path="/" element={<HomeScreen />} />
-            <Route path="/map" element={<MapScreen />} />
-            <Route path="/feed" element={<FeedScreen />} />
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav />
-        </Router>
-      </AppProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+          {useHash ? (
+            <HashRouter>
+              <RoutesWrapper />
+            </HashRouter>
+          ) : (
+            <BrowserRouter basename="/">
+              <RoutesWrapper />
+            </BrowserRouter>
+          )}
+        </AppProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
 export default App;
+

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Shield, Activity, AlertTriangle } from "lucide-react";
 
 export default function HomeScreen() {
-  const { triggerSOS, emergency, isCountdown, countdownSeconds, cancelSOS, resolveEmergency, profile } = useApp();
+  const { triggerSOS, emergency, isCountdown, countdownSeconds, cancelSOS, resolveEmergency, profile, joinAsVolunteer, leaveVolunteer } = useApp();
   const navigate = useNavigate();
 
   if (isCountdown) {
@@ -105,7 +105,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="flex flex-col items-center min-h-screen px-6 pt-16 pb-24 fade-in">
+    <div className="flex flex-col items-center min-h-screen bg-white px-6 pt-16 pb-24 fade-in">
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <Shield className="w-6 h-6 text-primary" />
@@ -140,6 +140,40 @@ export default function HomeScreen() {
             <p className="text-[11px] text-muted-foreground">Test automatic SOS with 20s countdown</p>
           </div>
         </button>
+
+        {profile.isVolunteer ? (
+          <button
+            onClick={leaveVolunteer}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-red-500/10 active:bg-red-500/20 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-red-500" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-sm text-red-500">Leave Volunteer Program</p>
+              <p className="text-[11px] text-muted-foreground">Stop receiving emergency alerts</p>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              if (profile.name && profile.phone) {
+                joinAsVolunteer();
+              } else {
+                navigate("/profile");
+              }
+            }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-green-500/10 active:bg-green-500/20 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-green-500" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-sm text-green-500">Join as Volunteer</p>
+              <p className="text-[11px] text-muted-foreground">Help others in emergencies</p>
+            </div>
+          </button>
+        )}
 
         {!profile.name && (
           <button
