@@ -36,6 +36,7 @@ const App = () => {
 
   // Set dark theme
   document.documentElement.classList.add("dark");
+  console.log("App component rendered, useHash:", useHash);
 
   return (
     <QueryClientProvider client={queryClient}>

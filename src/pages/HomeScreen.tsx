@@ -6,6 +6,8 @@ export default function HomeScreen() {
   const { triggerSOS, emergency, isCountdown, countdownSeconds, cancelSOS, resolveEmergency, profile, joinAsVolunteer, leaveVolunteer } = useApp();
   const navigate = useNavigate();
 
+  console.log("HomeScreen rendered, emergency:", emergency, "isCountdown:", isCountdown);
+
   if (isCountdown) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-secondary px-6 fade-in">
@@ -105,7 +107,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-white px-6 pt-16 pb-24 fade-in">
+    <div className="flex flex-col items-center min-h-screen bg-background px-6 pt-16 pb-24 fade-in">
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <Shield className="w-6 h-6 text-primary" />

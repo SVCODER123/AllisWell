@@ -65,7 +65,7 @@ export default function FeedScreen() {
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground font-medium">📍 {incident.location}</span>
               <button
-                onClick={() => reportFalse(incident.id)}
+                onClick={() => console.log("Report false", incident.id)}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
               >
                 <Flag className="w-3 h-3" />
